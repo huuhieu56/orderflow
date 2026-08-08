@@ -1,4 +1,4 @@
-package user
+package auth
 
 import (
 	"database/sql"
@@ -26,4 +26,29 @@ func (r *UserRepository) Create(u *models.User) error {
 	).Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt)
 
 	return err
+}
+
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+	query := 
+	`
+		SELECT id, email, password_hash, role, created_at, updated_at
+		FROM users
+		WHERE email = $1
+	`
+
+	user := &models.User{}
+	err := r.db.QueryRow(query, email).Scan(
+		&user.ID, &user.Email, &user.PasswordHash,
+		&user.Role, &user.CreatedAt, &user.UpdatedAt, 
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, sql.ErrNoRows
+	}
+
+	if err != nil {
+		return nil, err 
+	}
+
+	return user, nil 
 }

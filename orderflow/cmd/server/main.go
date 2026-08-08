@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"orderflow/internal/config"
 	"orderflow/internal/database"
-	"orderflow/internal/user"
+	"orderflow/internal/auth"
 )
 
 func main() {
@@ -23,14 +23,14 @@ func main() {
 		log.Fatalf("cannot run migrations: %v", err)
 	}
 
-	// User 
-	userRepo := user.NewUserRepository(db) 
-	userSvc := user.NewUserService(userRepo)
-	userHandler := user.NewUserHandler(userSvc)
+	// Auth
+	authRepo := auth.NewUserRepository(db)
+	authSvc := auth.NewUserService(authRepo)
+	authHandler := auth.NewUserHandler(authSvc)
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /api/v1/auth/register", userHandler.Register)
+	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
