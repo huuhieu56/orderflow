@@ -24,13 +24,15 @@ func main() {
 	}
 
 	// Auth
-	authRepo := auth.NewUserRepository(db)
-	authSvc := auth.NewUserService(authRepo)
-	authHandler := auth.NewUserHandler(authSvc)
+	tokenSvc := auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration)
+	authRepo := auth.NewRepository(db)
+	authSvc := auth.NewService(authRepo)
+	authHandler := auth.NewHandler(authSvc, tokenSvc)
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
+	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

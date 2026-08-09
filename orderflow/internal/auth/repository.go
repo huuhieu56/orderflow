@@ -5,15 +5,15 @@ import (
 	"orderflow/internal/models"
 )
 
-type UserRepository struct {
+type Repository struct {
 	db *sql.DB
 }
 
-func NewUserRepository(db *sql.DB) *UserRepository {
-	return &UserRepository{db: db}
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{db: db}
 }
 
-func (r *UserRepository) Create(u *models.User) error {
+func (r *Repository) Create(u *models.User) error {
 	query := 
 	`
 		INSERT INTO users (email, password_hash, role) 
@@ -28,7 +28,7 @@ func (r *UserRepository) Create(u *models.User) error {
 	return err
 }
 
-func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+func (r *Repository) GetByEmail(email string) (*models.User, error) {
 	query := 
 	`
 		SELECT id, email, password_hash, role, created_at, updated_at

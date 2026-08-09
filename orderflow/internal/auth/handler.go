@@ -11,15 +11,21 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
-type UserHandler struct {
-	svc *UserService 
+type LoginRequest struct {
+	Email string `json:"email"`
+	Password string `json:"password"`
 }
 
-func NewUserHandler(svc *UserService) *UserHandler {
-	return &UserHandler{svc: svc}
+type Handler struct {
+	svc *Service 
+	token *TokenService
 }
 
-func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
+func NewHandler(svc *Service, token *TokenService) *Handler {
+	return &Handler{svc: svc, token: token}
+}
+
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "invalid json"}`, http.StatusBadRequest)
@@ -42,4 +48,35 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		"role": user.Role,
 	})
 
+}
+
+func (h* Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest;
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	user, err := h.svc.Login(req.Email, req.Password) 
+	if err != nil {
+		http.Error(w, `{"error": "invalid credentials"}`, http.StatusUnauthorized)
+		return
+	}
+
+	token, err := h.token.Generate(user)
+	if err != nil {
+		http.Error(w, `{"error": "token generation failed"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"token": token, 
+		"user": map[string]any{
+			"id": user.ID,
+			"email": user.Email,
+			"role": user.Role,
+		},
+	})
 }
