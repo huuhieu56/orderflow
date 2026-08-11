@@ -56,3 +56,11 @@ func (s *Service) Login(email, password string) (*models.User, error) {
 
 	return user, nil
 }
+
+func (s *Service) Refresh(userID int64) (*models.User, error) {
+	user, err := s.repo.GetByID(userID)
+	if err != nil {
+		return nil, err 
+	}
+	return user, nil 
+}

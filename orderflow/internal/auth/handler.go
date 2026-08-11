@@ -70,9 +70,16 @@ func (h* Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refreshToken, err := h.token.GenerateRefresh(user)
+	if err != nil {
+		http.Error(w, `{"error": "refresh token generation failed"}`, http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"token": token, 
+		"refreshToken": refreshToken,
 		"user": map[string]any{
 			"id": user.ID,
 			"email": user.Email,
@@ -90,4 +97,35 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]any{"user_id": userID})
+}
+
+func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+      var req struct {
+              RefreshToken string `json:"refresh_token"`
+      }
+      if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+              http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+              return
+      }
+
+      claims, err := h.token.Parse(req.RefreshToken)
+      if err != nil {
+              http.Error(w, `{"error":"invalid refresh token"}`, http.StatusUnauthorized)
+              return
+      }
+
+      userID := int64(claims["user_id"].(float64))
+      user, err := h.svc.Refresh(userID)
+      if err != nil {
+              http.Error(w, `{"error":"user not found"}`, http.StatusUnauthorized)
+              return
+      }
+
+      token, _ := h.token.Generate(user)
+      json.NewEncoder(w).Encode(map[string]any{"token": token})
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	// Redis: remove refresh token. NO Redis: Client self-deletion 
+	w.WriteHeader(http.StatusOK)
 }

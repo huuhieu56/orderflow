@@ -19,6 +19,7 @@ type Config struct {
 
 	JWTSecret		string 
 	JWTExpiration	time.Duration
+	JWTRefreshExpiration	time.Duration
 }
 
 func Load() *Config {
@@ -34,6 +35,7 @@ func Load() *Config {
 
 		JWTSecret: 		getEnv("JWT_SECRET", "orderflow-dev-secret"),
 		JWTExpiration:	time.Hour, 
+		JWTRefreshExpiration: time.Hour * 24 * 7,
 	}
 }
 
