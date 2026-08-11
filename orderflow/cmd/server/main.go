@@ -1,24 +1,26 @@
 package main
+
 import (
 	"fmt"
 	"log"
 	"net/http"
+	"orderflow/internal/auth"
 	"orderflow/internal/config"
 	"orderflow/internal/database"
-	"orderflow/internal/auth"
+	"orderflow/internal/order"
 	"orderflow/internal/product"
 )
 
 func main() {
 	cfg := config.Load()
 
-	// Connect DB 
+	// Connect DB
 	db, err := database.Connect(cfg)
 	if err != nil {
 		log.Fatalf("cannot connect to database: %v", err)
 	}
 	log.Println("Connected to database")
-	defer db.Close() 
+	defer db.Close()
 
 	// Migrate DB
 	if err := database.RunMigrations(db, "internal/database/migrations"); err != nil {
@@ -31,10 +33,15 @@ func main() {
 	authSvc := auth.NewService(authRepo)
 	authHandler := auth.NewHandler(authSvc, tokenSvc)
 
-	// Product 
+	// Product
 	productRepo := product.NewRepository(db)
 	productSvc := product.NewService(productRepo)
 	productHandler := product.NewHandler(productSvc)
+
+	// Order
+	orderRepo := order.NewRepository(db)
+	orderSvc := order.NewService(orderRepo, productRepo)
+	orderHandler := order.NewHandler(orderSvc)
 
 	mux := http.NewServeMux()
 
@@ -49,6 +56,9 @@ func main() {
 	mux.HandleFunc("POST /api/v1/products", productHandler.Create)
 	mux.HandleFunc("GET /api/v1/products", productHandler.List)
 
+	// Order
+	mux.Handle("POST /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.Create)))
+	mux.Handle("GET /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.ListByUser)))
 
 	// Health
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

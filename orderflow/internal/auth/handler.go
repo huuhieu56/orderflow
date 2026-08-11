@@ -7,17 +7,17 @@ import (
 )
 
 type RegisterRequest struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type LoginRequest struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type Handler struct {
-	svc *Service 
+	svc   *Service
 	token *TokenService
 }
 
@@ -29,36 +29,36 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "invalid json"}`, http.StatusBadRequest)
-		return 
+		return
 	}
 
 	user, err := h.svc.Register(req.Email, req.Password)
 
 	if err != nil {
 		http.Error(w, `{"error": "registration failed"}`, http.StatusInternalServerError)
-		return 
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	json.NewEncoder(w).Encode(map[string]any{
-		"id": user.ID, 
-		"email": user.Email, 
-		"role": user.Role,
+		"id":    user.ID,
+		"email": user.Email,
+		"role":  user.Role,
 	})
 
 }
 
-func (h* Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest;
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "invalid json"}`, http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.svc.Login(req.Email, req.Password) 
+	user, err := h.svc.Login(req.Email, req.Password)
 	if err != nil {
 		http.Error(w, `{"error": "invalid credentials"}`, http.StatusUnauthorized)
 		return
@@ -78,12 +78,12 @@ func (h* Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"token": token, 
+		"token":        token,
 		"refreshToken": refreshToken,
 		"user": map[string]any{
-			"id": user.ID,
+			"id":    user.ID,
 			"email": user.Email,
-			"role": user.Role,
+			"role":  user.Role,
 		},
 	})
 }
@@ -91,41 +91,41 @@ func (h* Handler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFromContext(r.Context())
 
-	if !ok { 
+	if !ok {
 		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
-		return 
+		return
 	}
 
 	json.NewEncoder(w).Encode(map[string]any{"user_id": userID})
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
-      var req struct {
-              RefreshToken string `json:"refresh_token"`
-      }
-      if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-              http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
-              return
-      }
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
 
-      claims, err := h.token.Parse(req.RefreshToken)
-      if err != nil {
-              http.Error(w, `{"error":"invalid refresh token"}`, http.StatusUnauthorized)
-              return
-      }
+	claims, err := h.token.Parse(req.RefreshToken)
+	if err != nil {
+		http.Error(w, `{"error":"invalid refresh token"}`, http.StatusUnauthorized)
+		return
+	}
 
-      userID := int64(claims["user_id"].(float64))
-      user, err := h.svc.Refresh(userID)
-      if err != nil {
-              http.Error(w, `{"error":"user not found"}`, http.StatusUnauthorized)
-              return
-      }
+	userID := int64(claims["user_id"].(float64))
+	user, err := h.svc.Refresh(userID)
+	if err != nil {
+		http.Error(w, `{"error":"user not found"}`, http.StatusUnauthorized)
+		return
+	}
 
-      token, _ := h.token.Generate(user)
-      json.NewEncoder(w).Encode(map[string]any{"token": token})
+	token, _ := h.token.Generate(user)
+	json.NewEncoder(w).Encode(map[string]any{"token": token})
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	// Redis: remove refresh token. NO Redis: Client self-deletion 
+	// Redis: remove refresh token. NO Redis: Client self-deletion
 	w.WriteHeader(http.StatusOK)
 }

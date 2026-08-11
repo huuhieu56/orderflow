@@ -1,15 +1,15 @@
 package auth
 
 import (
-	"time"
 	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"orderflow/internal/models"
+	"time"
 )
 
 type TokenService struct {
-	secret []byte
-	expiry time.Duration 
+	secret        []byte
+	expiry        time.Duration
 	refreshExpiry time.Duration
 }
 
@@ -19,10 +19,10 @@ func NewTokenService(secret string, expiry, refreshExpiry time.Duration) *TokenS
 
 func (t *TokenService) Generate(user *models.User) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": user.ID, 
-		"email": user.Email, 
-		"role": user.Role,
-		"exp": time.Now().Add(t.expiry).Unix(),
+		"user_id": user.ID,
+		"email":   user.Email,
+		"role":    user.Role,
+		"exp":     time.Now().Add(t.expiry).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -34,21 +34,21 @@ func (t *TokenService) Parse(tokenString string) (jwt.MapClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		
-		return t.secret, nil 
+
+		return t.secret, nil
 	})
 
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
-	return token.Claims.(jwt.MapClaims), nil 
+	return token.Claims.(jwt.MapClaims), nil
 }
 
-func(t *TokenService) GenerateRefresh(user *models.User) (string, error) {
+func (t *TokenService) GenerateRefresh(user *models.User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": user.ID,
-		"exp": time.Now().Add(t.refreshExpiry).Unix(),
+		"exp":     time.Now().Add(t.refreshExpiry).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(t.secret)

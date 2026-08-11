@@ -15,13 +15,13 @@ func RunMigrations(db *sql.DB, migrationsDir string) error {
 		return fmt.Errorf("read migrations dir: %w", err)
 	}
 
-	var files []string 
+	var files []string
 	for _, e := range entries {
 		if !e.IsDir() && filepath.Ext(e.Name()) == ".sql" {
 			files = append(files, filepath.Join(migrationsDir, e.Name()))
 		}
 	}
-	sort.Strings(files) 
+	sort.Strings(files)
 
 	for _, f := range files {
 		content, err := os.ReadFile(f)
@@ -33,5 +33,5 @@ func RunMigrations(db *sql.DB, migrationsDir string) error {
 		}
 		log.Printf("migrated %s", filepath.Base(f))
 	}
-	return nil 
+	return nil
 }
