@@ -33,6 +33,7 @@ func main() {
 
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
+	mux.Handle("GET /api/v1/auth/me", tokenSvc.AuthMiddleware(http.HandlerFunc(authHandler.Me)))
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

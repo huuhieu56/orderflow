@@ -80,3 +80,14 @@ func (h* Handler) Login(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 }
+
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := UserIDFromContext(r.Context())
+
+	if !ok { 
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return 
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{"user_id": userID})
+}
