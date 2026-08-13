@@ -90,5 +90,5 @@ func (s *Service) CancelOrder(userID, orderID int64) (*models.Order, error) {
 		return nil, err 
 	}
 
-	return cancelled, err 
+	return cancelled, nil 
 }

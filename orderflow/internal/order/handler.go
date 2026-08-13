@@ -114,18 +114,36 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request){
+func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
-		return 
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
 	}
 
 	orderID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-
 	if err != nil || orderID <= 0 {
-		http.Error(w, `{"error": "invalid order id"}`, http.StatusBadRequest)
-		return 
+		http.Error(w, `{"error":"invalid order id"}`, http.StatusBadRequest)
+		return
 	}
-	
+
+	order, err := h.svc.CancelOrder(userID, orderID)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.Error(w, `{"error":"order not found"}`, http.StatusNotFound)
+		return
+	}
+	if errors.Is(err, ErrOrderNotCancellable) {
+		http.Error(w, `{"error":"order cannot be cancelled"}`, http.StatusConflict)
+		return
+	}
+	if err != nil {
+		http.Error(w, `{"error":"failed to cancel order"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"id":     order.ID,
+		"status": order.Status,
+	})
 }

@@ -60,7 +60,8 @@ func main() {
 	mux.Handle("POST /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.Create)))
 	mux.Handle("GET /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.ListByUser)))
 	mux.Handle("GET /api/v1/orders/{id}", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.GetByID)))
-
+	mux.Handle("DELETE /api/v1/orders/{id}", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.Cancel)))
+	
 	// Health
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
