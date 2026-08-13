@@ -1,9 +1,12 @@
 package order
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"orderflow/internal/auth"
+	"strconv"
+	"errors"
 )
 
 type CreateOrderRequest struct {
@@ -63,7 +66,7 @@ func (h *Handler) ListByUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := h.svc.repo.GetByUserID(userID)
+	orders, err := h.svc.ListOrdersByUser(userID)
 	if err != nil {
 		http.Error(w, `{"error":"list failed"}`, http.StatusInternalServerError)
 		return
@@ -71,4 +74,58 @@ func (h *Handler) ListByUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"orders": orders})
+}
+
+func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.UserIDFromContext(r.Context())
+
+	if !ok { 
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return 
+	}
+
+	orderID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || orderID <= 0 {
+		http.Error(w, `{"error": "invalid order id"}`, http.StatusBadRequest)
+		return 
+	}
+
+	order, err := h.svc.GetOrder(userID, orderID)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.Error(w, `{"error": "order not found"}`, http.StatusNotFound)
+		return 
+	}
+
+	if err != nil {
+		http.Error(w, `{"error": "failed to get order"}`, http.StatusInternalServerError)
+		return 
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+  		"id":           order.ID,
+  		"user_id":      order.UserID,
+  		"status":       order.Status,
+  		"total_amount": order.TotalAmount,
+  		"created_at":   order.CreatedAt,
+  		"updated_at":   order.UpdatedAt,
+  		"items":        order.Items,
+
+	})
+}
+
+func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request){
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		return 
+	}
+
+	orderID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+
+	if err != nil || orderID <= 0 {
+		http.Error(w, `{"error": "invalid order id"}`, http.StatusBadRequest)
+		return 
+	}
+	
 }

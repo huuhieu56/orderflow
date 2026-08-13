@@ -59,6 +59,7 @@ func main() {
 	// Order
 	mux.Handle("POST /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.Create)))
 	mux.Handle("GET /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.ListByUser)))
+	mux.Handle("GET /api/v1/orders/{id}", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.GetByID)))
 
 	// Health
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {

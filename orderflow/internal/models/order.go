@@ -9,6 +9,7 @@ type Order struct {
 	TotalAmount float64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Items 		[]*OrderItem
 }
 
 type OrderItem struct {

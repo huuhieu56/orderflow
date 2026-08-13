@@ -71,3 +71,98 @@ func (r *Repository) GetByUserID(userID int64) ([]*models.Order, error) {
 	}
 	return orders, rows.Err()
 }
+
+
+func (r *Repository) GetByID(userID, orderID int64) (*models.Order, error) {
+	query := 
+	`
+		SELECT id, user_id, status, total_amount, created_at, updated_at 
+		FROM orders
+		WHERE id = $1 AND user_id = $2 
+	`
+
+	order := &models.Order{}
+
+	err := r.db.QueryRow(
+		query,
+		orderID,
+		userID,
+	).Scan(
+		&order.ID,
+		&order.UserID,
+		&order.Status,
+		&order.TotalAmount,
+		&order.CreatedAt,
+		&order.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := r.db.Query(`
+		SELECT id, order_id, product_id, product_name, 
+			unit_price, quantity, subtotal 
+		FROM order_items 
+		WHERE order_id = $1
+		ORDER BY id
+	`, orderID)
+
+	if err != nil {
+		return nil, err 
+	}
+
+	defer rows.Close()
+
+	order.Items = make([]*models.OrderItem, 0)
+
+	for rows.Next() {
+		item := &models.OrderItem{}
+
+		if err := rows.Scan(
+			&item.ID,
+			&item.OrderID,
+			&item.ProductID,
+			&item.ProductName,
+			&item.UnitPrice,
+			&item.Quantity,
+			&item.Subtotal,
+		); err != nil {
+			return nil, err 
+		}
+
+		order.Items = append(order.Items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err 
+	}
+
+	return order, nil 
+}
+
+func (r *Repository) Cancel(userID, orderID int64) (*models.Order, error) {
+	order := &models.Order{} 
+
+	err := r.db.QueryRow(`
+		UPDATE orders
+		SET status = 'cancelled', updated_at = NOW() 
+		WHERE id = $1 
+			AND user_id = $2 
+			AND status = 'pending'
+		RETURNING id, user_id, status, total_amount, created_at, updated_at	
+	`, orderID, userID).Scan(
+		&order.ID, 
+		&order.UserID, 
+		&order.Status,
+		&order.TotalAmount,
+		&order.CreatedAt,
+		&order.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err 
+	}
+
+	return order, nil 
+}

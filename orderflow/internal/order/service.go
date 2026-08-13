@@ -1,6 +1,7 @@
 package order
 
 import (
+	"database/sql"
 	"errors"
 	"orderflow/internal/models"
 	"orderflow/internal/product"
@@ -10,6 +11,8 @@ type Service struct {
 	repo        *Repository
 	productRepo *product.Repository
 }
+
+var ErrOrderNotCancellable = errors.New("order cannot be cancelled")
 
 func NewService(repo *Repository, productRepo *product.Repository) *Service {
 	return &Service{repo: repo, productRepo: productRepo}
@@ -59,4 +62,33 @@ func (s *Service) CreateOrder(userID int64, items []CreateOrderItem) (*models.Or
 		return nil, err
 	}
 	return order, nil
+}
+
+func (s *Service) GetOrder(userID, orderID int64) (*models.Order, error) {
+	return s.repo.GetByID(userID, orderID)
+}
+
+func (s *Service) ListOrdersByUser(userID int64) ([]*models.Order, error) {
+	return s.repo.GetByUserID(userID)
+}
+
+func (s *Service) CancelOrder(userID, orderID int64) (*models.Order, error) {
+	order, err := s.repo.GetByID(userID, orderID)
+	if err != nil {
+		return nil, err 
+	}
+
+	if order.Status != "pending" {
+		return nil, ErrOrderNotCancellable
+	}
+
+	cancelled, err := s.repo.Cancel(userID, orderID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrOrderNotCancellable
+	}
+	if err != nil {
+		return nil, err 
+	}
+
+	return cancelled, err 
 }
