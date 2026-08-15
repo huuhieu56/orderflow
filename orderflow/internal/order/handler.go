@@ -47,7 +47,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	order, err := h.svc.CreateOrder(userID, items)
 	if err != nil {
-		http.Error(w, `{"error":`+err.Error()+`}`, http.StatusBadRequest)
+		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
 		return
 	}
 

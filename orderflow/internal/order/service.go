@@ -5,11 +5,13 @@ import (
 	"errors"
 	"orderflow/internal/models"
 	"orderflow/internal/product"
+	"orderflow/internal/notification"
 )
 
 type Service struct {
 	repo        *Repository
 	productRepo *product.Repository
+	notificationSvc *notification.Service
 }
 
 var ErrOrderNotCancellable = errors.New("order cannot be cancelled")
@@ -37,6 +39,10 @@ func (s *Service) CreateOrder(userID int64, items []CreateOrderItem) (*models.Or
 	var total float64
 
 	for _, it := range items {
+		if it.Quantity <= 0 {
+			return nil, errors.New("quantity must be greater than zero")
+		}
+
 		p, err := s.productRepo.GetByID(it.ProductID)
 		if err != nil {
 			return nil, err

@@ -53,7 +53,14 @@ func main() {
 	mux.Handle("POST /api/v1/auth/logout", tokenSvc.AuthMiddleware(http.HandlerFunc(authHandler.Logout)))
 
 	// Product
-	mux.HandleFunc("POST /api/v1/products", productHandler.Create)
+	mux.Handle(
+		"POST /api/v1/products", 
+		tokenSvc.AuthMiddleware(
+			auth.RequiredRole("admin")(
+				http.HandlerFunc(productHandler.Create),
+			),
+		),
+	)
 	mux.HandleFunc("GET /api/v1/products", productHandler.List)
 
 	// Order

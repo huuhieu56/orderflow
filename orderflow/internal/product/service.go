@@ -17,8 +17,11 @@ func (s *Service) Create(name, description string, price float64, stock int64) (
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
-	if price < 0 {
-		return nil, errors.New("price cannot be negative")
+	if stock < 0 {
+		return nil, errors.New("stock cannot be negative")
+	}
+	if price <= 0 {
+		return nil, errors.New("price must be greater than zero")
 	}
 
 	p := &models.Product{

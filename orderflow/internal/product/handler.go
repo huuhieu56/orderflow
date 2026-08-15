@@ -29,7 +29,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	p, err := h.svc.Create(req.Name, req.Description, req.Price, req.Stock)
 	if err != nil {
-		http.Error(w, `{"error":`+err.Error()+`}`, http.StatusBadRequest)
+		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
 		return
 	}
 
