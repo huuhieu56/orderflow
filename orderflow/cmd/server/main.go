@@ -9,6 +9,7 @@ import (
 	"orderflow/internal/database"
 	"orderflow/internal/order"
 	"orderflow/internal/product"
+	"orderflow/internal/notification"
 )
 
 func main() {
@@ -38,9 +39,18 @@ func main() {
 	productSvc := product.NewService(productRepo)
 	productHandler := product.NewHandler(productSvc)
 
+	// Notification
+	notificationRepo := notification.NewRepository(db)
+	notificationSvc := notification.NewService(notificationRepo)
+	notificationHandler := notification.NewHandler(notificationSvc)
+
 	// Order
 	orderRepo := order.NewRepository(db)
-	orderSvc := order.NewService(orderRepo, productRepo)
+	orderSvc := order.NewService(
+		orderRepo, 
+		productRepo,
+		notificationSvc,
+	)
 	orderHandler := order.NewHandler(orderSvc)
 
 	mux := http.NewServeMux()
@@ -62,6 +72,21 @@ func main() {
 		),
 	)
 	mux.HandleFunc("GET /api/v1/products", productHandler.List)
+
+	// Notification 
+	mux.Handle(
+		"GET /api/v1/notifications",
+		tokenSvc.AuthMiddleware(
+			http.HandlerFunc(notificationHandler.List),
+		),
+	)
+
+	mux.Handle(
+		"PATCH /api/v1/notifications/{id}/read",
+		tokenSvc.AuthMiddleware(
+			http.HandlerFunc(notificationHandler.MarkRead),
+		),
+	)
 
 	// Order
 	mux.Handle("POST /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.Create)))

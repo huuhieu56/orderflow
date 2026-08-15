@@ -16,8 +16,11 @@ type Service struct {
 
 var ErrOrderNotCancellable = errors.New("order cannot be cancelled")
 
-func NewService(repo *Repository, productRepo *product.Repository) *Service {
-	return &Service{repo: repo, productRepo: productRepo}
+func NewService(repo *Repository, productRepo *product.Repository, notificationSvc *notification.Service) *Service {
+	return &Service{repo: repo, 
+					productRepo: productRepo,
+					notificationSvc: notificationSvc,
+	}
 }
 
 type CreateOrderItem struct {
@@ -67,6 +70,11 @@ func (s *Service) CreateOrder(userID int64, items []CreateOrderItem) (*models.Or
 	if err := s.repo.Create(order, orderItems); err != nil {
 		return nil, err
 	}
+
+	if err := s.notificationSvc.CreateOrderCreated(order); err != nil {
+		return nil, err 
+	}
+
 	return order, nil
 }
 
@@ -92,7 +100,12 @@ func (s *Service) CancelOrder(userID, orderID int64) (*models.Order, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrOrderNotCancellable
 	}
+	
 	if err != nil {
+		return nil, err 
+	}
+
+	if err := s.notificationSvc.CreateOrderCancelled(cancelled); err != nil {
 		return nil, err 
 	}
 

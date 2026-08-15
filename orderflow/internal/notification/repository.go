@@ -16,7 +16,7 @@ func NewRepository(db *sql.DB) *Repository {
 func (r *Repository) Create(n *models.Notification) error {
 	return r.db.QueryRow(`
 		INSERT INTO notifications (user_id, type, title, content)
-		VALUE ($1, $2, $3, $4)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at 
 	`, n.UserID, n.Type, n.Title, n.Content).Scan(
 		&n.ID, 
