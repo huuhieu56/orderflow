@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	// "log"
+	"errors"
 	"net/http"
 )
 
@@ -59,6 +60,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.svc.Login(req.Email, req.Password)
+	if errors.Is(err, ErrTooManyAttempts) {
+		http.Error(w, `{"error": "too many failed attempts"}`, http.StatusTooManyRequests)
+		return
+	}
 	if err != nil {
 		http.Error(w, `{"error": "invalid credentials"}`, http.StatusUnauthorized)
 		return

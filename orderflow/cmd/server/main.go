@@ -40,7 +40,7 @@ func main() {
 	// Auth
 	tokenSvc := auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration, cfg.JWTRefreshExpiration)
 	authRepo := auth.NewRepository(db)
-	authSvc := auth.NewService(authRepo)
+	authSvc := auth.NewService(authRepo, cacheSvc)
 	authHandler := auth.NewHandler(authSvc, tokenSvc)
 
 	// Product
