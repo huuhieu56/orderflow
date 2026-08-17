@@ -1,15 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"orderflow/internal/auth"
+	"orderflow/internal/cache"
 	"orderflow/internal/config"
 	"orderflow/internal/database"
+	"orderflow/internal/notification"
 	"orderflow/internal/order"
 	"orderflow/internal/product"
-	"orderflow/internal/notification"
 )
 
 func main() {
@@ -22,6 +24,13 @@ func main() {
 	}
 	log.Println("Connected to database")
 	defer db.Close()
+
+	// Connect Redis
+	cacheSvc := cache.New(cfg.RedisAddr)
+	defer cacheSvc.Close()
+	if err := cacheSvc.Ping(context.Background()); err != nil {
+		log.Printf("warning: redis not reachable: %v", err)
+	}
 
 	// Migrate DB
 	if err := database.RunMigrations(db, "internal/database/migrations"); err != nil {
@@ -36,7 +45,7 @@ func main() {
 
 	// Product
 	productRepo := product.NewRepository(db)
-	productSvc := product.NewService(productRepo)
+	productSvc := product.NewService(productRepo, cacheSvc)
 	productHandler := product.NewHandler(productSvc)
 
 	// Notification
