@@ -8,12 +8,12 @@ import (
 )
 
 type Cache struct {
-	client *redis.Client 
+	client *redis.Client
 }
 
 func New(addr string) *Cache {
 	client := redis.NewClient(&redis.Options{
-		Addr: addr,		// "localhost:6379"
+		Addr: addr, // "localhost:6379"
 	})
 	return &Cache{client: client}
 }
@@ -31,20 +31,20 @@ func (c *Cache) Set(ctx context.Context, key string, value any, ttl time.Duratio
 	return c.client.Set(ctx, key, value, ttl).Err()
 }
 
-// Get 
+// Get
 func (c *Cache) Get(ctx context.Context, key string) (string, bool, error) {
 	val, err := c.client.Get(ctx, key).Result()
 	if err == redis.Nil {
-		return "", false, nil // key not found 
+		return "", false, nil // key not found
 	}
 
 	if err != nil {
-		return  "", false, err 
+		return "", false, err
 	}
-	return val, true, nil 
+	return val, true, nil
 }
 
-// Del 
+// Del
 func (c *Cache) Del(ctx context.Context, key string) error {
 	return c.client.Del(ctx, key).Err()
 }

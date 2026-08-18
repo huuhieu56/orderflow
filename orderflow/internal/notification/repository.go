@@ -19,7 +19,7 @@ func (r *Repository) Create(n *models.Notification) error {
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at 
 	`, n.UserID, n.Type, n.Title, n.Content).Scan(
-		&n.ID, 
+		&n.ID,
 		&n.CreatedAt,
 	)
 }

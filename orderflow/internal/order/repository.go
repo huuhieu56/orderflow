@@ -72,10 +72,9 @@ func (r *Repository) GetByUserID(userID int64) ([]*models.Order, error) {
 	return orders, rows.Err()
 }
 
-
 func (r *Repository) GetByID(userID, orderID int64) (*models.Order, error) {
-	query := 
-	`
+	query :=
+		`
 		SELECT id, user_id, status, total_amount, created_at, updated_at 
 		FROM orders
 		WHERE id = $1 AND user_id = $2 
@@ -109,7 +108,7 @@ func (r *Repository) GetByID(userID, orderID int64) (*models.Order, error) {
 	`, orderID)
 
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	defer rows.Close()
@@ -128,21 +127,21 @@ func (r *Repository) GetByID(userID, orderID int64) (*models.Order, error) {
 			&item.Quantity,
 			&item.Subtotal,
 		); err != nil {
-			return nil, err 
+			return nil, err
 		}
 
 		order.Items = append(order.Items, item)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err 
+		return nil, err
 	}
 
-	return order, nil 
+	return order, nil
 }
 
 func (r *Repository) Cancel(userID, orderID int64) (*models.Order, error) {
-	order := &models.Order{} 
+	order := &models.Order{}
 
 	err := r.db.QueryRow(`
 		UPDATE orders
@@ -152,8 +151,8 @@ func (r *Repository) Cancel(userID, orderID int64) (*models.Order, error) {
 			AND status = 'pending'
 		RETURNING id, user_id, status, total_amount, created_at, updated_at	
 	`, orderID, userID).Scan(
-		&order.ID, 
-		&order.UserID, 
+		&order.ID,
+		&order.UserID,
 		&order.Status,
 		&order.TotalAmount,
 		&order.CreatedAt,
@@ -161,8 +160,8 @@ func (r *Repository) Cancel(userID, orderID int64) (*models.Order, error) {
 	)
 
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
-	return order, nil 
+	return order, nil
 }

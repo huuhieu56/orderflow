@@ -80,11 +80,20 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error": "refresh token generation failed"}`, http.StatusInternalServerError)
 		return
 	}
+	if err := h.svc.StoreRefreshToken(
+		r.Context(),
+		refreshToken,
+		user.ID,
+		h.token.refreshExpiry,
+	); err != nil {
+		http.Error(w, `{"error": "refresh token storage failed"}`, http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"token":        token,
-		"refreshToken": refreshToken,
+		"token":         token,
+		"refresh_token": refreshToken,
 		"user": map[string]any{
 			"id":    user.ID,
 			"email": user.Email,
@@ -108,29 +117,56 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
 		return
 	}
 
-	claims, err := h.token.Parse(req.RefreshToken)
-	if err != nil {
+	if req.RefreshToken == "" {
+		http.Error(w, `{"error":"refresh token is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.svc.RefreshToken(r.Context(), req.RefreshToken)
+	if errors.Is(err, ErrInvalidRefreshToken) || errors.Is(err, ErrRevokedRefreshToken) {
 		http.Error(w, `{"error":"invalid refresh token"}`, http.StatusUnauthorized)
 		return
 	}
-
-	userID := int64(claims["user_id"].(float64))
-	user, err := h.svc.Refresh(userID)
 	if err != nil {
-		http.Error(w, `{"error":"user not found"}`, http.StatusUnauthorized)
+		http.Error(w, `{"error":"refresh failed"}`, http.StatusInternalServerError)
 		return
 	}
 
-	token, _ := h.token.Generate(user)
-	json.NewEncoder(w).Encode(map[string]any{"token": token})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"token":         result.AccessToken,
+		"refresh_token": result.RefreshToken,
+	})
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	// Redis: remove refresh token. NO Redis: Client self-deletion
-	w.WriteHeader(http.StatusOK)
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.RefreshToken == "" {
+		http.Error(w, `{"error":"refresh token is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.svc.RevokeRefreshToken(
+		r.Context(),
+		req.RefreshToken,
+	); err != nil {
+		http.Error(w, `{"error":"logout failed"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -4,22 +4,22 @@ import (
 	"database/sql"
 	"errors"
 	"orderflow/internal/models"
-	"orderflow/internal/product"
 	"orderflow/internal/notification"
+	"orderflow/internal/product"
 )
 
 type Service struct {
-	repo        *Repository
-	productRepo *product.Repository
+	repo            *Repository
+	productRepo     *product.Repository
 	notificationSvc *notification.Service
 }
 
 var ErrOrderNotCancellable = errors.New("order cannot be cancelled")
 
 func NewService(repo *Repository, productRepo *product.Repository, notificationSvc *notification.Service) *Service {
-	return &Service{repo: repo, 
-					productRepo: productRepo,
-					notificationSvc: notificationSvc,
+	return &Service{repo: repo,
+		productRepo:     productRepo,
+		notificationSvc: notificationSvc,
 	}
 }
 
@@ -72,7 +72,7 @@ func (s *Service) CreateOrder(userID int64, items []CreateOrderItem) (*models.Or
 	}
 
 	if err := s.notificationSvc.CreateOrderCreated(order); err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	return order, nil
@@ -89,7 +89,7 @@ func (s *Service) ListOrdersByUser(userID int64) ([]*models.Order, error) {
 func (s *Service) CancelOrder(userID, orderID int64) (*models.Order, error) {
 	order, err := s.repo.GetByID(userID, orderID)
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	if order.Status != "pending" {
@@ -100,14 +100,14 @@ func (s *Service) CancelOrder(userID, orderID int64) (*models.Order, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrOrderNotCancellable
 	}
-	
+
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	if err := s.notificationSvc.CreateOrderCancelled(cancelled); err != nil {
-		return nil, err 
+		return nil, err
 	}
 
-	return cancelled, nil 
+	return cancelled, nil
 }

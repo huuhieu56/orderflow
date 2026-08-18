@@ -11,10 +11,10 @@ import (
 )
 
 const productsListCacheKey = "products:list"
-const cacheTTL = 5 * time.Minute 
+const cacheTTL = 5 * time.Minute
 
 type Service struct {
-	repo *Repository
+	repo  *Repository
 	cache *cache.Cache
 }
 
@@ -55,43 +55,43 @@ func (s *Service) List(onlyActive bool) ([]*models.Product, error) {
 	if cached, found, err := s.cache.Get(ctx, productsListCacheKey); err == nil && found {
 		var products []*models.Product
 		if err := json.Unmarshal([]byte(cached), &products); err == nil {
-			return products, nil 	// Cache hit - no reach DB
+			return products, nil // Cache hit - no reach DB
 		}
 	}
 
-	// Cache miss -> read DB 
+	// Cache miss -> read DB
 	products, err := s.repo.List(onlyActive)
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
-	// Save to Redis 
+	// Save to Redis
 	if data, err := json.Marshal(products); err == nil {
 		s.cache.Set(ctx, productsListCacheKey, data, cacheTTL)
 	}
 
-	return products, nil 
+	return products, nil
 }
 
 func (s *Service) GetByID(id int64) (*models.Product, error) {
-	key := fmt.Sprintf("products:%d", id) 
+	key := fmt.Sprintf("products:%d", id)
 
-	// Cache-Aside 
+	// Cache-Aside
 	if cached, found, err := s.cache.Get(context.Background(), key); err == nil && found {
-		var p models.Product 
+		var p models.Product
 		if err := json.Unmarshal([]byte(cached), &p); err == nil {
-			return &p, nil 
+			return &p, nil
 		}
 	}
 
 	p, err := s.repo.GetByID(id)
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	if data, err := json.Marshal(p); err == nil {
 		s.cache.Set(context.Background(), key, data, cacheTTL)
 	}
 
-	return p, nil 
+	return p, nil
 }

@@ -19,7 +19,7 @@ type Config struct {
 	JWTExpiration        time.Duration
 	JWTRefreshExpiration time.Duration
 
-	RedisAddr	string 
+	RedisAddr string
 }
 
 func Load() *Config {

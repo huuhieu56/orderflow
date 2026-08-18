@@ -40,7 +40,7 @@ func main() {
 	// Auth
 	tokenSvc := auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration, cfg.JWTRefreshExpiration)
 	authRepo := auth.NewRepository(db)
-	authSvc := auth.NewService(authRepo, cacheSvc)
+	authSvc := auth.NewService(authRepo, cacheSvc, tokenSvc)
 	authHandler := auth.NewHandler(authSvc, tokenSvc)
 
 	// Product
@@ -56,7 +56,7 @@ func main() {
 	// Order
 	orderRepo := order.NewRepository(db)
 	orderSvc := order.NewService(
-		orderRepo, 
+		orderRepo,
 		productRepo,
 		notificationSvc,
 	)
@@ -73,7 +73,7 @@ func main() {
 
 	// Product
 	mux.Handle(
-		"POST /api/v1/products", 
+		"POST /api/v1/products",
 		tokenSvc.AuthMiddleware(
 			auth.RequiredRole("admin")(
 				http.HandlerFunc(productHandler.Create),
@@ -82,7 +82,7 @@ func main() {
 	)
 	mux.HandleFunc("GET /api/v1/products", productHandler.List)
 
-	// Notification 
+	// Notification
 	mux.Handle(
 		"GET /api/v1/notifications",
 		tokenSvc.AuthMiddleware(
@@ -102,7 +102,7 @@ func main() {
 	mux.Handle("GET /api/v1/orders", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.ListByUser)))
 	mux.Handle("GET /api/v1/orders/{id}", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.GetByID)))
 	mux.Handle("DELETE /api/v1/orders/{id}", tokenSvc.AuthMiddleware(http.HandlerFunc(orderHandler.Cancel)))
-	
+
 	// Health
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

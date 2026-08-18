@@ -22,19 +22,18 @@ func (s *Service) MarkRead(userID, notificationID int64) error {
 
 func (s *Service) CreateOrderCreated(order *models.Order) error {
 	return s.repo.Create(&models.Notification{
-		UserID: order.UserID,
-		Type: "order.created",
-		Title: "Order Created",
+		UserID:  order.UserID,
+		Type:    "order.created",
+		Title:   "Order Created",
 		Content: "Your order has been created successfully",
 	})
 }
 
-func (s* Service) CreateOrderCancelled(order *models.Order) error {
+func (s *Service) CreateOrderCancelled(order *models.Order) error {
 	return s.repo.Create(&models.Notification{
-		UserID: order.UserID,
-		Type: "order.cancelled",
-		Title: "Order Cancelled",
+		UserID:  order.UserID,
+		Type:    "order.cancelled",
+		Title:   "Order Cancelled",
 		Content: "Your order has been cancelled",
 	})
 }
-

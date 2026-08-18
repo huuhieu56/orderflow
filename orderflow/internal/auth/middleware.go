@@ -10,7 +10,7 @@ type contextKey string
 
 const (
 	userIDKey contextKey = "user_id"
-	roleKey contextKey = "role"
+	roleKey   contextKey = "role"
 )
 
 func (t *TokenService) AuthMiddleware(next http.Handler) http.Handler {
@@ -48,7 +48,7 @@ func UserIDFromContext(ctx context.Context) (int64, bool) {
 
 func RoleFromContext(ctx context.Context) (string, bool) {
 	role, ok := ctx.Value(roleKey).(string)
-	return role, ok 
+	return role, ok
 }
 
 func RequiredRole(requiredRole string) func(http.Handler) http.Handler {
@@ -57,12 +57,10 @@ func RequiredRole(requiredRole string) func(http.Handler) http.Handler {
 			role, ok := RoleFromContext(r.Context())
 			if !ok || role != requiredRole {
 				http.Error(w, `{"error": "forbidden"}`, http.StatusForbidden)
-				return 
+				return
 			}
 
 			next.ServeHTTP(w, r)
 		})
 	}
 }
-
-
