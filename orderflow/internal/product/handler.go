@@ -1,8 +1,11 @@
 package product
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 )
 
 type CreateProductRequest struct {
@@ -42,7 +45,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	products, err := h.svc.List(false)
+	products, err := h.svc.List()
 	if err != nil {
 		http.Error(w, `{"error":"list failed"}`, http.StatusInternalServerError)
 		return
@@ -50,4 +53,26 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"products": products})
+}
+
+func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		http.Error(w, `{"error": "invalid product id"}`, http.StatusBadRequest)
+		return
+	}
+
+	product, err := h.svc.GetByID(id)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.Error(w, `{"error": "invalid product id"}`, http.StatusNotFound)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, `{"error": "get product failed"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(product)
 }

@@ -81,6 +81,7 @@ func main() {
 		),
 	)
 	mux.HandleFunc("GET /api/v1/products", productHandler.List)
+	mux.HandleFunc("GET /api/v1/products/{id}", productHandler.GetByID)
 
 	// Notification
 	mux.Handle(

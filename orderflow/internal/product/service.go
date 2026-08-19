@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const productsListCacheKey = "products:list"
+const productsListCacheKey = "products:list:active"
 const cacheTTL = 5 * time.Minute
 
 type Service struct {
@@ -48,7 +48,7 @@ func (s *Service) Create(name, description string, price float64, stock int64) (
 	return p, nil
 }
 
-func (s *Service) List(onlyActive bool) ([]*models.Product, error) {
+func (s *Service) List() ([]*models.Product, error) {
 	ctx := context.Background()
 
 	// Find in Redis first
@@ -60,7 +60,7 @@ func (s *Service) List(onlyActive bool) ([]*models.Product, error) {
 	}
 
 	// Cache miss -> read DB
-	products, err := s.repo.List(onlyActive)
+	products, err := s.repo.List(true)
 	if err != nil {
 		return nil, err
 	}

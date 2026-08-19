@@ -28,17 +28,18 @@ func (r *Repository) Create(p *models.Product) error {
 func (r *Repository) GetByID(id int64) (*models.Product, error) {
 	query := `
               SELECT id, name, description, price, stock, status, created_at, updated_at
-              FROM products WHERE id = $1
+              FROM products WHERE id = $1 AND status = 'active'
       `
 	p := &models.Product{}
 	err := r.db.QueryRow(query, id).Scan(
 		&p.ID, &p.Name, &p.Description, &p.Price, &p.Stock,
 		&p.Status, &p.CreatedAt, &p.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, sql.ErrNoRows
+	
+	if err != nil {
+		return nil, err
 	}
-	return p, err
+	return p, nil
 }
 
 func (r *Repository) List(onlyActive bool) ([]*models.Product, error) {
