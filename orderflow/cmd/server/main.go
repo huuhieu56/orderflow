@@ -9,6 +9,7 @@ import (
 	"orderflow/internal/cache"
 	"orderflow/internal/config"
 	"orderflow/internal/database"
+	"orderflow/internal/messaging"
 	"orderflow/internal/notification"
 	"orderflow/internal/order"
 	"orderflow/internal/product"
@@ -37,6 +38,20 @@ func main() {
 		log.Fatalf("cannot run migrations: %v", err)
 	}
 
+	// Kafka
+	producer := messaging.NewProducer(
+		[]string{cfg.KafkaBrokers},
+		cfg.KafkaOrderTopic,
+	)
+	defer producer.Close()
+
+	consumer := messaging.NewConsumer(
+		[]string{cfg.KafkaBrokers},
+		cfg.KafkaOrderTopic,
+		cfg.KafkaConsumerGroup,
+	)
+	defer consumer.Close()
+
 	// Auth
 	tokenSvc := auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration, cfg.JWTRefreshExpiration)
 	authRepo := auth.NewRepository(db)
@@ -52,15 +67,30 @@ func main() {
 	notificationRepo := notification.NewRepository(db)
 	notificationSvc := notification.NewService(notificationRepo)
 	notificationHandler := notification.NewHandler(notificationSvc)
+	notificationConsumer := notification.NewEventConsumer(
+		notificationSvc,
+		consumer,
+	)
 
 	// Order
 	orderRepo := order.NewRepository(db)
 	orderSvc := order.NewService(
 		orderRepo,
 		productRepo,
-		notificationSvc,
+		producer,
 	)
 	orderHandler := order.NewHandler(orderSvc)
+
+	consumerCtx, cancelConsumer := context.WithCancel(
+		context.Background(),
+	)
+	defer cancelConsumer()
+
+	go func() {
+		if err := notificationConsumer.Run(consumerCtx); err != nil {
+			log.Printf("notification consumer stopped: %v", err)
+		}
+	}()
 
 	mux := http.NewServeMux()
 

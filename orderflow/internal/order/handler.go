@@ -45,7 +45,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	order, err := h.svc.CreateOrder(userID, items)
+	order, err := h.svc.CreateOrder(r.Context(), userID, items)
 	if err != nil {
 		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
 		return
@@ -126,7 +126,7 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := h.svc.CancelOrder(userID, orderID)
+	order, err := h.svc.CancelOrder(r.Context(), userID, orderID)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, `{"error":"order not found"}`, http.StatusNotFound)
 		return

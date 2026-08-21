@@ -19,7 +19,10 @@ type Config struct {
 	JWTExpiration        time.Duration
 	JWTRefreshExpiration time.Duration
 
-	RedisAddr string
+	RedisAddr          string
+	KafkaBrokers       string
+	KafkaOrderTopic    string
+	KafkaConsumerGroup string
 }
 
 func Load() *Config {
@@ -37,7 +40,10 @@ func Load() *Config {
 		JWTExpiration:        time.Hour,
 		JWTRefreshExpiration: time.Hour * 24 * 7,
 
-		RedisAddr: getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisAddr:          getEnv("REDIS_ADDR", "localhost:6379"),
+		KafkaBrokers:       getEnv("KAFKA_BROKERS", "localhost:9092"),
+		KafkaOrderTopic:    getEnv("KAFKA_ORDER_TOPIC", "order.events"),
+		KafkaConsumerGroup: getEnv("KAFKA_CONSUMER_GROUP", "notification-service"),
 	}
 }
 

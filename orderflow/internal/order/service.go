@@ -1,25 +1,37 @@
 package order
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"orderflow/internal/events"
 	"orderflow/internal/models"
-	"orderflow/internal/notification"
 	"orderflow/internal/product"
+	"time"
 )
 
 type Service struct {
-	repo            *Repository
-	productRepo     *product.Repository
-	notificationSvc *notification.Service
+	repo        *Repository
+	productRepo *product.Repository
+	publisher   EventPublisher
+}
+
+type EventPublisher interface {
+	PublishOrderEvent(context.Context, events.OrderEvent) error
 }
 
 var ErrOrderNotCancellable = errors.New("order cannot be cancelled")
 
-func NewService(repo *Repository, productRepo *product.Repository, notificationSvc *notification.Service) *Service {
-	return &Service{repo: repo,
-		productRepo:     productRepo,
-		notificationSvc: notificationSvc,
+func NewService(
+	repo *Repository,
+	productRepo *product.Repository,
+	publisher EventPublisher,
+) *Service {
+	return &Service{
+		repo:        repo,
+		productRepo: productRepo,
+		publisher:   publisher,
 	}
 }
 
@@ -28,7 +40,11 @@ type CreateOrderItem struct {
 	Quantity  int64
 }
 
-func (s *Service) CreateOrder(userID int64, items []CreateOrderItem) (*models.Order, error) {
+func (s *Service) CreateOrder(
+	ctx context.Context,
+	userID int64,
+	items []CreateOrderItem,
+) (*models.Order, error) {
 	if len(items) == 0 {
 		return nil, errors.New("order must have at least one item")
 	}
@@ -71,7 +87,15 @@ func (s *Service) CreateOrder(userID int64, items []CreateOrderItem) (*models.Or
 		return nil, err
 	}
 
-	if err := s.notificationSvc.CreateOrderCreated(order); err != nil {
+	event := events.OrderEvent{
+		EventID:   fmt.Sprintf("order-created-%d", order.ID),
+		Type:      events.OrderCreatedEvent,
+		OrderID:   order.ID,
+		UserID:    order.UserID,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.publisher.PublishOrderEvent(ctx, event); err != nil {
 		return nil, err
 	}
 
@@ -86,7 +110,10 @@ func (s *Service) ListOrdersByUser(userID int64) ([]*models.Order, error) {
 	return s.repo.GetByUserID(userID)
 }
 
-func (s *Service) CancelOrder(userID, orderID int64) (*models.Order, error) {
+func (s *Service) CancelOrder(
+	ctx context.Context,
+	userID, orderID int64,
+) (*models.Order, error) {
 	order, err := s.repo.GetByID(userID, orderID)
 	if err != nil {
 		return nil, err
@@ -105,7 +132,15 @@ func (s *Service) CancelOrder(userID, orderID int64) (*models.Order, error) {
 		return nil, err
 	}
 
-	if err := s.notificationSvc.CreateOrderCancelled(cancelled); err != nil {
+	event := events.OrderEvent{
+		EventID:   fmt.Sprintf("order-cancelled-%d", cancelled.ID),
+		Type:      events.OrderCancelledEvent,
+		OrderID:   cancelled.ID,
+		UserID:    cancelled.UserID,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.publisher.PublishOrderEvent(ctx, event); err != nil {
 		return nil, err
 	}
 
