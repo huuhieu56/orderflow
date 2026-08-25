@@ -56,7 +56,7 @@ func main() {
 	tokenSvc := auth.NewTokenService(cfg.JWTSecret, cfg.JWTExpiration, cfg.JWTRefreshExpiration)
 	authRepo := auth.NewRepository(db)
 	authSvc := auth.NewService(authRepo, cacheSvc, tokenSvc)
-	authHandler := auth.NewHandler(authSvc, tokenSvc)
+	authHandler := auth.NewHandler(authSvc)
 
 	// Product
 	productRepo := product.NewRepository(db)

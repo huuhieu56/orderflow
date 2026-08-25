@@ -18,6 +18,12 @@ const lockoutDuration = 5 * time.Minute
 
 var ErrTooManyAttempts = errors.New("too many failed attempts, try again later")
 
+type LoginResult struct {
+	User         *models.User
+	AccessToken  string
+	RefreshToken string
+}
+
 func refreshTokenKey(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return "refresh_token:" + hex.EncodeToString(hash[:])
@@ -57,7 +63,7 @@ func (s *Service) Register(email, password string) (*models.User, error) {
 	return user, nil
 }
 
-func (s *Service) Login(email, password string) (*models.User, error) {
+func (s *Service) Login(email, password string) (*LoginResult, error) {
 	ctx := context.Background()
 	failKey := "login_fail:" + email
 
@@ -86,7 +92,26 @@ func (s *Service) Login(email, password string) (*models.User, error) {
 	// login success -> remove count
 	s.cache.Del(ctx, failKey)
 
-	return user, nil
+	accessToken, err := s.token.Generate(user)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.token.GenerateRefresh(user)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.StoreRefreshToken(
+		ctx, refreshToken, user.ID, s.token.RefreshExpiry(),
+	); err != nil {
+		return nil, err
+	}
+
+	return &LoginResult{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
 func (s *Service) getCount(ctx context.Context, key string) string {
@@ -154,7 +179,7 @@ func (s *Service) RefreshToken(ctx context.Context, rawToken string) (*RefreshRe
 		return nil, err
 	}
 
-	if err := s.StoreRefreshToken(ctx, newRefreshToken, user.ID, s.token.refreshExpiry); err != nil {
+	if err := s.StoreRefreshToken(ctx, newRefreshToken, user.ID, s.token.RefreshExpiry()); err != nil {
 		return nil, err
 	}
 	if err := s.RevokeRefreshToken(ctx, rawToken); err != nil {

@@ -2,10 +2,10 @@ package notification
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"orderflow/internal/auth"
+	"orderflow/internal/httpx"
 	"strconv"
 )
 
@@ -20,18 +20,17 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	notifications, err := h.svc.ListByUser(userID)
 	if err != nil {
-		http.Error(w, `{"error": "failed to list notifications"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "failed to list notifications")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	httpx.Success(w, http.StatusOK, map[string]any{
 		"notifications": notifications,
 	})
 }
@@ -39,24 +38,24 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) MarkRead(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	notificationID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || notificationID <= 0 {
-		http.Error(w, `{"error": "invalid notification id"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid notification id")
 		return
 	}
 
 	err = h.svc.MarkRead(userID, notificationID)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, `{"error": "notification not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "notification not found")
 		return
 	}
 	if err != nil {
-		http.Error(w, `{"error": "failed to mark notification"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "failed to mark notification")
 		return
 	}
 

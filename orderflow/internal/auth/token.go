@@ -53,3 +53,7 @@ func (t *TokenService) GenerateRefresh(user *models.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(t.secret)
 }
+
+func (t *TokenService) RefreshExpiry() time.Duration {
+	return t.refreshExpiry
+}

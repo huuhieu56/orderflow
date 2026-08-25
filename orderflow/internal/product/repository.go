@@ -35,7 +35,7 @@ func (r *Repository) GetByID(id int64) (*models.Product, error) {
 		&p.ID, &p.Name, &p.Description, &p.Price, &p.Stock,
 		&p.Status, &p.CreatedAt, &p.UpdatedAt,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}

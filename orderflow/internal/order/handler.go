@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"orderflow/internal/auth"
+	"orderflow/internal/httpx"
 	"strconv"
 )
 
@@ -27,13 +28,13 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	var req CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
@@ -47,13 +48,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	order, err := h.svc.CreateOrder(r.Context(), userID, items)
 	if err != nil {
-		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]any{
+	httpx.Success(w, http.StatusCreated, map[string]any{
 		"id": order.ID, "status": order.Status,
 		"total_amount": order.TotalAmount,
 	})
@@ -62,47 +61,45 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListByUser(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	orders, err := h.svc.ListOrdersByUser(userID)
 	if err != nil {
-		http.Error(w, `{"error":"list failed"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "list failed")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"orders": orders})
+	httpx.Success(w, http.StatusOK, map[string]any{"orders": orders})
 }
 
 func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 
 	if !ok {
-		http.Error(w, `{"error": "unauthorized"}`, http.StatusUnauthorized)
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	orderID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || orderID <= 0 {
-		http.Error(w, `{"error": "invalid order id"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid order id")
 		return
 	}
 
 	order, err := h.svc.GetOrder(userID, orderID)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, `{"error": "order not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "order not found")
 		return
 	}
 
 	if err != nil {
-		http.Error(w, `{"error": "failed to get order"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "failed to get order")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	httpx.Success(w, http.StatusOK, map[string]any{
 		"id":           order.ID,
 		"user_id":      order.UserID,
 		"status":       order.Status,
@@ -116,32 +113,31 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		httpx.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	orderID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || orderID <= 0 {
-		http.Error(w, `{"error":"invalid order id"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid order id")
 		return
 	}
 
 	order, err := h.svc.CancelOrder(r.Context(), userID, orderID)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, `{"error":"order not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "order not found")
 		return
 	}
 	if errors.Is(err, ErrOrderNotCancellable) {
-		http.Error(w, `{"error":"order cannot be cancelled"}`, http.StatusConflict)
+		httpx.Error(w, http.StatusConflict, "order cannot be cancelled")
 		return
 	}
 	if err != nil {
-		http.Error(w, `{"error":"failed to cancel order"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "failed to cancel order")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	httpx.Success(w, http.StatusOK, map[string]any{
 		"id":     order.ID,
 		"status": order.Status,
 	})
