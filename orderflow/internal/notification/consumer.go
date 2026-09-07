@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
 	"orderflow/internal/events"
 	"orderflow/internal/messaging"
@@ -28,7 +29,12 @@ func (c *EventConsumer) Run(ctx context.Context) error {
 	for {
 		message, err := c.consumer.FetchMessage(ctx)
 		if err != nil {
-			return err
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			log.Printf("kafka fetch failed, retrying: %v", err)
+			time.Sleep(2 * time.Second)
+			continue
 		}
 
 		var event events.OrderEvent
@@ -36,7 +42,7 @@ func (c *EventConsumer) Run(ctx context.Context) error {
 			log.Printf("invalid order event: %v", err)
 
 			if err := c.consumer.CommitMessage(ctx, message); err != nil {
-				return err
+				log.Printf("kafka commit failed: %v", err)
 			}
 			continue
 		}
@@ -51,7 +57,8 @@ func (c *EventConsumer) Run(ctx context.Context) error {
 		}
 
 		if err := c.consumer.CommitMessage(ctx, message); err != nil {
-			return err
+			log.Printf("kafka commit failed: %v", err)
+			continue
 		}
 
 	}

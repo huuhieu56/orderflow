@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"orderflow/internal/events"
 	"orderflow/internal/models"
 	"orderflow/internal/product"
@@ -96,7 +97,7 @@ func (s *Service) CreateOrder(
 	}
 
 	if err := s.publisher.PublishOrderEvent(ctx, event); err != nil {
-		return nil, err
+		log.Printf("order %d saved but publish failed: %v", order.ID, err)
 	}
 
 	return order, nil
@@ -141,7 +142,7 @@ func (s *Service) CancelOrder(
 	}
 
 	if err := s.publisher.PublishOrderEvent(ctx, event); err != nil {
-		return nil, err
+		log.Printf("order %d cancelled but publish failed: %v", cancelled.ID, err)
 	}
 
 	return cancelled, nil
