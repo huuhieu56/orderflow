@@ -22,6 +22,12 @@ OrderFlow không tập trung vào nghiệp vụ thương mại điện tử ph�
 
 Hệ thống không có thanh toán thật, giao hàng, mã giảm giá, tìm kiếm sản phẩm hoặc frontend phức tạp.
 
+### Trạng thái hiện tại
+
+Backend local đã hoàn thành bốn microservice, database-per-service, Redis cache-aside, Kafka, Transactional Outbox, Idempotent Consumer, migration có version và health check. Outbox có retry giới hạn trong cùng topic; retry topic và Dead Letter Topic chưa triển khai. Kubernetes, Terraform, graceful shutdown và observability thuộc các phase tiếp theo.
+
+Giá trị tiền dùng số nguyên theo minor unit của một currency duy nhất. Order hiện chỉ kiểm tra tồn kho, chưa reservation hoặc trừ kho.
+
 ---
 
 # 2. Mục tiêu dự án
@@ -341,15 +347,13 @@ Order Item bao gồm:
 Phiên bản đầu sử dụng các trạng thái:
 
 * Pending
-* Confirmed
 * Cancelled
 
 Luồng đơn giản:
 
 * Người dùng tạo đơn
 * Order được tạo với trạng thái Pending
-* Sau khi validation hoàn tất, order chuyển thành Confirmed
-* Người dùng có thể hủy order nếu order chưa bị hủy trước đó
+* Người dùng có thể hủy order khi order còn Pending
 
 ### Product snapshot
 
@@ -383,7 +387,6 @@ Khi tạo đơn hàng, Order Service cần xác nhận:
 Order Service phát các event:
 
 * order.created
-* order.confirmed
 * order.cancelled
 
 MVP chỉ cần:
@@ -610,8 +613,8 @@ Thông tin metadata gồm:
 * Event version
 * Occurred time
 * Producer
-* Correlation ID
-* Trace ID
+
+Correlation ID và Trace ID được bổ sung khi triển khai observability.
 
 Payload chứa dữ liệu nghiệp vụ.
 
@@ -621,7 +624,7 @@ Ví dụ event order.created chứa:
 * User ID
 * Total amount
 * Order status
-* Created time
+* Occurred time nằm trong metadata của event
 
 ## Event versioning
 
@@ -1242,6 +1245,8 @@ Mỗi service có database riêng.
 
 ## Phase 6 — Kafka reliability
 
+Trạng thái: đã có consumer group, manual offset commit, Transactional Outbox, Idempotent Consumer và retry giới hạn. Retry topic và Dead Letter Topic chưa triển khai.
+
 Thêm:
 
 * Consumer group
@@ -1252,6 +1257,8 @@ Thêm:
 * Dead Letter Topic
 
 ## Phase 7 — Docker Compose
+
+Trạng thái: hoàn thành cho môi trường local.
 
 Container hóa toàn bộ hệ thống.
 
@@ -1282,6 +1289,8 @@ Thêm:
 * Kafka consumer lag monitoring
 
 ## Phase 10 — Hardening
+
+Trạng thái backend hiện tại: đã có timeout cho HTTP call sang Product, validation cơ bản và phân tách access/refresh token. Graceful shutdown, load test và failure test chưa triển khai.
 
 Thêm:
 

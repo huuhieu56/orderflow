@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: postgres
+    volumes:
+      - orderflow-postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    volumes: [orderflow-redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  kafka:
+    image: apache/kafka:4.0.2
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+  auth:
+    build: { context: ., dockerfile: services/auth/Dockerfile }
+    environment: { DB_HOST: postgres, DB_PORT: 5432, DB_USER: admin, DB_PASSWORD: admin123, REDIS_ADDR: redis:6379, JWT_SECRET: orderflow-dev-secret, INITIAL_ADMIN_EMAIL: admin@example.com, INITIAL_ADMIN_PASSWORD: admin123456 }
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+  product:
+    build: { context: ., dockerfile: services/product/Dockerfile }
+    environment: { DB_HOST: postgres, DB_PORT: 5432, DB_USER: admin, DB_PASSWORD: admin123, REDIS_ADDR: redis:6379, JWT_SECRET: orderflow-dev-secret }
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+  order:
+    build: { context: ., dockerfile: services/order/Dockerfile }
+    environment: { DB_HOST: postgres, DB_PORT: 5432, DB_USER: admin, DB_PASSWORD: admin123, PRODUCT_SERVICE_URL: http://product:8080, KAFKA_BROKERS: kafka:9092, KAFKA_ORDER_TOPIC: order.events, JWT_SECRET: orderflow-dev-secret }
+    depends_on: { postgres: { condition: service_healthy }, kafka: { condition: service_healthy }, product: { condition: service_started } }
+  notification:
+    build: { context: ., dockerfile: services/notification/Dockerfile }
+    environment: { DB_HOST: postgres, DB_PORT: 5432, DB_USER: admin, DB_PASSWORD: admin123, KAFKA_BROKERS: kafka:9092, KAFKA_ORDER_TOPIC: order.events, KAFKA_CONSUMER_GROUP: notification-service, JWT_SECRET: orderflow-dev-secret }
+    depends_on: { postgres: { condition: service_healthy }, kafka: { condition: service_healthy } }
+  gateway:
+    build: { context: ., dockerfile: gateway/Dockerfile }
+    ports: ["${GATEWAY_PORT:-8080}:8080"]
+    depends_on: { auth: { condition: service_started }, product: { condition: service_started }, order: { condition: service_started }, notification: { condition: service_started } }
+volumes:
+  orderflow-postgres-data:
+  orderflow-redis-data:

@@ -1,0 +1,7 @@
+{
+  "id": "integer",
+  "name": "string",
+  "price": "integer",
+  "stock": "integer",
+  "status": "active|inactive"
+}

@@ -1,0 +1,11 @@
+go 1.26.5
+
+use (
+	./libs/httpx
+	./libs/identity
+	./libs/sqlmigrate
+	./services/auth
+	./services/notification
+	./services/order
+	./services/product
+)

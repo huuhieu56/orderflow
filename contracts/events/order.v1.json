@@ -1,0 +1,13 @@
+{
+  "event_id": "string",
+  "event_type": "order.created|order.cancelled",
+  "event_version": 1,
+  "occurred_at": "RFC3339 timestamp",
+  "producer": "order-service",
+  "payload": {
+    "order_id": "integer",
+    "user_id": "integer",
+    "status": "pending|cancelled",
+    "total_amount": "integer"
+  }
+}
