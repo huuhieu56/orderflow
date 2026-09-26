@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orderflow
+
+---
+apiVersion: v1
+kind: Secret 
+metadata:
+  name: orderflow-secrets
+  namespace: orderflow 
+type: Opaque 
+stringData: 
+  DB_PASSWORD: admin123 
+  JWT_SECRET: orderflow-dev-secret
+  INITIAL_ADMIN_EMAIL: admin@example.com
+  INITIAL_ADMIN_PASSWORD: admin123456
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orderflow-config
+  namespace: orderflow
+data:
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USER: admin
+  DB_SSLMODE: disable
+  REDIS_ADDR: redis:6379
+  KAFKA_BROKERS: kafka:9092
+  KAFKA_ORDER_TOPIC: order.events
+  KAFKA_CONSUMER_GROUP: notification-service
+  PRODUCT_SERVICE_URL: http://product:8080
