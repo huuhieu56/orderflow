@@ -63,10 +63,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := h.svc.Login(r.Context(), req.Email, req.Password)
-	if errors.Is(err, ErrTooManyAttempts) {
-		httpx.Error(w, http.StatusTooManyRequests, "too many failed attempts")
-		return
-	}
 	if errors.Is(err, ErrInvalidCredentials) {
 		httpx.Error(w, http.StatusUnauthorized, "invalid credentials")
 		return

@@ -2,7 +2,6 @@ package order
 
 import (
 	"context"
-	"math"
 )
 
 type Service struct {
@@ -51,13 +50,7 @@ func (s *Service) CreateOrder(ctx context.Context, userID int64, input []CreateO
 		if p.Stock < quantity {
 			return nil, ErrInsufficientStock
 		}
-		if quantity > math.MaxInt64/p.Price {
-			return nil, ErrInvalidOrder
-		}
 		subtotal := p.Price * quantity
-		if o.TotalAmount > math.MaxInt64-subtotal {
-			return nil, ErrInvalidOrder
-		}
 		items = append(items, &OrderItem{
 			ProductID:   p.ID,
 			ProductName: p.Name,

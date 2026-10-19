@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-const maxLoginAttempts = 5
-const lockoutDuration = 5 * time.Minute
-
 type LoginResult struct {
 	User         *User
 	AccessToken  string
@@ -94,16 +91,9 @@ func (s *Service) EnsureInitialAdmin(ctx context.Context, email, password string
 
 func (s *Service) Login(ctx context.Context, email, password string) (*LoginResult, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
-	failKey := "login_fail:" + email
-
-	count, _ := strconv.Atoi(s.getCount(ctx, failKey))
-	if count >= maxLoginAttempts {
-		return nil, ErrTooManyAttempts
-	}
 
 	user, err := s.repo.GetByEmail(ctx, email)
 	if errors.Is(err, ErrUserNotFound) {
-		s.recordFail(ctx, failKey)
 		return nil, ErrInvalidCredentials
 	}
 	if err != nil {
@@ -113,11 +103,8 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 	if err := bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash), []byte(password),
 	); err != nil {
-		s.recordFail(ctx, failKey)
 		return nil, ErrInvalidCredentials
 	}
-
-	_ = s.cache.Del(ctx, failKey)
 
 	accessToken, err := s.token.Generate(user)
 	if err != nil {
@@ -139,18 +126,6 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
-}
-
-func (s *Service) getCount(ctx context.Context, key string) string {
-	val, found, err := s.cache.Get(ctx, key)
-	if err != nil || !found {
-		return "0"
-	}
-	return val
-}
-
-func (s *Service) recordFail(ctx context.Context, key string) {
-	_, _ = s.cache.Increment(ctx, key, lockoutDuration)
 }
 
 func (s *Service) Refresh(ctx context.Context, userID int64) (*User, error) {
